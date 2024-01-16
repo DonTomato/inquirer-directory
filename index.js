@@ -26,6 +26,7 @@ module.exports = Prompt;
  */
 var CHOOSE = "choose this directory";
 var BACK = "go back a directory";
+var CREATE = "create a new directory";
 
 /**
  * Constructor
@@ -64,6 +65,7 @@ util.inherits( Prompt, Base );
 Prompt.prototype._run = function( cb ) {
   var self = this;
   self.searchMode = false;
+  self.createDirectoryMode = false;
   this.done = cb;
   var alphaNumericRegex = /\w|\.|\-/i;
   var events = observe(this.rl);
@@ -91,6 +93,7 @@ Prompt.prototype._run = function( cb ) {
   var searchTerm = keySlash.flatMap(function (md) {
     self.searchMode = true;
     self.searchTerm = '';
+    self.createDirectoryMode = false;
     self.render();
     var end$ = new rx.Subject();
     var done$ = rx.Observable.merge(events.line, end$);
@@ -116,6 +119,7 @@ Prompt.prototype._run = function( cb ) {
   var outcome = this.handleSubmit(events.line);
   outcome.drill.forEach( this.handleDrill.bind(this) );
   outcome.back.forEach( this.handleBack.bind(this) );
+  outcome.create.forEach( this.handleCreate.bind(this) );
   keyUps.takeUntil( outcome.done ).forEach( this.onUpKey.bind(this) );
   keyDowns.takeUntil( outcome.done ).forEach( this.onDownKey.bind(this) );
   keyMinus.takeUntil( outcome.done ).forEach( this.handleBack.bind(this) );
@@ -155,6 +159,8 @@ Prompt.prototype.render = function() {
   }
   if (this.searchMode) {
     message += ("\nSearch: " + this.searchTerm);
+  } else if (this.createDirectoryMode) {
+    message += ("\nCreate new directory: " + this.createDirectoryName);
   } else {
     message += "\n(Use \"/\" key to search this directory)";
   }
@@ -182,14 +188,19 @@ Prompt.prototype.handleSubmit = function (e) {
     return choice === BACK;
   }).takeUntil(done);
 
+  var create = obx.filter(function (choice) {
+    return choice === CREATE;
+  }).takeUntil(done);
+
   var drill = obx.filter(function (choice) {
-    return choice !== BACK && choice !== CHOOSE;
+    return choice !== BACK && choice !== CHOOSE && choice !== CREATE;
   }).takeUntil(done);
 
   return {
     done: done,
     back: back,
-    drill: drill
+    drill: drill,
+    create: create
   };
 };
 
@@ -217,6 +228,25 @@ Prompt.prototype.handleBack = function () {
     this.selected = 0;
     this.render();
   }
+};
+
+/**
+ * when user selects "create a new folder"
+ */
+Prompt.prototype.handleCreate = function () {
+
+  // TODO: implement create folder
+
+  // var choice = this.opt.choices.getChoice( this.selected );
+  // this.depth++;
+  // this.currentPath = path.join(this.currentPath, choice.value);
+  // this.opt.choices = new Choices(this.createChoices(this.currentPath), this.answers);
+  // this.selected = 0;
+  this.createDirectoryMode = true;
+  this.createDirectoryName = '';
+  // console.log('CREATE');
+  this.render();
+
 };
 
 /**
@@ -287,9 +317,13 @@ Prompt.prototype.createChoices = function (basePath) {
     choices.push(new Separator());
   }
   choices.push(CHOOSE);
+  choices.push(new Separator());
   if (this.depth > 0) {
-    choices.push(new Separator());
     choices.push(BACK);
+    choices.push(new Separator());
+  }
+  if (this.opt.create) {
+    choices.push(CREATE);
     choices.push(new Separator());
   }
   return choices;

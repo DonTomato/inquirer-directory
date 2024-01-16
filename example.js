@@ -11,7 +11,8 @@ inquirer.prompt([
     type: "directory",
     name: "path",
     message: "In what directory would like to perform this action?",
-    basePath: "./node_modules"
+    basePath: "./data",
+    create: true
   }
 ], function( answers ) {
   console.log( JSON.stringify(answers, null, "  ") );
